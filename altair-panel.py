@@ -75,22 +75,22 @@ class Panel:
 
         # Setup the data switches
         self.dswitch = [
-            {"name": "SW0"  ,"handle": None, "pos": (880, 218), "key": "0"},
-            {"name": "SW1"  ,"handle": None, "pos": (843, 218), "key": "1"},
-            {"name": "SW2"  ,"handle": None, "pos": (806, 218), "key": "2"},
-            {"name": "SW3"  ,"handle": None, "pos": (751, 218), "key": "3"},
-            {"name": "SW4"  ,"handle": None, "pos": (714, 218), "key": "4"},
-            {"name": "SW5"  ,"handle": None, "pos": (677, 218), "key": "5"},
-            {"name": "SW6"  ,"handle": None, "pos": (622, 218), "key": "6"},
-            {"name": "SW7"  ,"handle": None, "pos": (585, 218), "key": "7"},
-            {"name": "SW8"  ,"handle": None, "pos": (548, 218), "key": "8"},
-            {"name": "SW9"  ,"handle": None, "pos": (493, 218), "key": "9"},
-            {"name": "SW10" ,"handle": None, "pos": (456, 218), "key": "a"},
-            {"name": "SW11" ,"handle": None, "pos": (419, 218), "key": "b"},
-            {"name": "SW12" ,"handle": None, "pos": (360, 218), "key": "c"},
-            {"name": "SW13" ,"handle": None, "pos": (327, 218), "key": "d"},
-            {"name": "SW14" ,"handle": None, "pos": (290, 218), "key": "e"},
-            {"name": "SW15" ,"handle": None, "pos": (235, 218), "key": "f"}
+            {"name": "SW0"  ,"handle": None, "pos": (880, 216), "key": "0"},
+            {"name": "SW1"  ,"handle": None, "pos": (843, 216), "key": "1"},
+            {"name": "SW2"  ,"handle": None, "pos": (806, 216), "key": "2"},
+            {"name": "SW3"  ,"handle": None, "pos": (751, 216), "key": "3"},
+            {"name": "SW4"  ,"handle": None, "pos": (714, 216), "key": "4"},
+            {"name": "SW5"  ,"handle": None, "pos": (677, 216), "key": "5"},
+            {"name": "SW6"  ,"handle": None, "pos": (622, 216), "key": "6"},
+            {"name": "SW7"  ,"handle": None, "pos": (585, 216), "key": "7"},
+            {"name": "SW8"  ,"handle": None, "pos": (548, 216), "key": "8"},
+            {"name": "SW9"  ,"handle": None, "pos": (493, 216), "key": "9"},
+            {"name": "SW10" ,"handle": None, "pos": (456, 216), "key": "a"},
+            {"name": "SW11" ,"handle": None, "pos": (419, 216), "key": "b"},
+            {"name": "SW12" ,"handle": None, "pos": (360, 216), "key": "c"},
+            {"name": "SW13" ,"handle": None, "pos": (327, 216), "key": "d"},
+            {"name": "SW14" ,"handle": None, "pos": (290, 216), "key": "e"},
+            {"name": "SW15" ,"handle": None, "pos": (235, 216), "key": "f"}
         ]
 
         # Setup the command switches
@@ -102,15 +102,22 @@ class Panel:
             {"name": "DEPOSIT/DEPOSIT NEXT" ,"handle": None, "pos": (456, 291),"values": ( 6, 7,"P","p")},
             {"name": "EXAMINE/EXAMINE NEXT" ,"handle": None, "pos": (382, 291),"values": ( 4, 5,"X","x")},
             {"name": "STEP/SLOW"            ,"handle": None, "pos": (308, 291),"values": ( 2, 3,"t",".")},
-            {"name": "STOP/RUN"             ,"handle": None, "pos": (233, 291),"values": ( 1, 0,"o","r")}
+            {"name": "STOP/RUN"             ,"handle": None, "pos": (233, 291),"values": ( 1, 0,"\033","r")}
         ]
+
+        # Power Switch
+        self.power_switch = {"name": "Power Switch"  ,"handle": None, "pos": (60, 291)}
 
         # Initialize the GUI
         self.root = Tk()
+        self.root.title("Altair 8800 Panel")
     
         # Add the canvas
         self.canvas = Canvas(self.root,  width=1000, height=400)
         self.canvas.pack()
+        
+        #Set the resizable property False
+        self.root.resizable(False, False)
     
         # Load the panel bitmap, and display it
         self.img = PhotoImage(file=resource_path("altair-panel.png"))
@@ -132,6 +139,8 @@ class Panel:
         for i in self.abus:    i["handle"] = self.canvas.create_image(i["pos"], image=self.led_off)
         for i in self.dswitch: i["handle"] = self.canvas.create_image(i["pos"], image=self.switch_down)
         for i in self.cswitch: i["handle"] = self.canvas.create_image(i["pos"], image=self.switch_middle)
+
+        self.power_switch["handle"] = self.canvas.create_image(self.power_switch["pos"], image=self.switch_up)
 
         # Bind the mouse to the canvas to allow clicking for the switches
         self.canvas.bind("<ButtonPress-1>", self.OnMouseDown)
@@ -169,6 +178,15 @@ class Panel:
         # Get the mouse x and y position
         x, y = event.x, event.y
 
+        xs = self.power_switch["pos"][0]
+        ys = self.power_switch["pos"][1]
+        # If we pressed a switch toggle switch
+        if x >= xs - 10 and x <= xs + 10 and y >= ys - 10 and y <= ys + 30:
+            self.connect_disconnect()
+            return
+
+        if self.socket is None: return
+
         # Check for momentary switch
         for i in self.cswitch:
 
@@ -184,7 +202,7 @@ class Panel:
                 # Send the up key value for that switch
                 self.send_switch(i["values"][2])
                 return
-
+            # Switch down
             if x >= xs - 10 and x <= xs + 10 and y > ys and y <= ys + 30:
                 # Save the switch element
                 self.switch_pressed = i
@@ -199,7 +217,7 @@ class Panel:
             xs = i["pos"][0]
             ys = i["pos"][1]
             # If we pressed a switch toggle switch
-            if x >= xs - 10 and x <= xs + 10 and y >= ys - 10 and y <= ys + 10:
+            if x >= xs - 10 and x <= xs + 10 and y >= ys - 10 and y <= ys + 30:
                 # Send the key value for that switch
                 self.send_switch(i["key"])
                 return
@@ -233,6 +251,8 @@ class Panel:
                 self.socket.setblocking(True)
                 self.socket.connect(('127.0.0.1', 8080))
                 self.connect_var.set("Disconnect")
+                self.root.title("Altair 8800 Panel - Connected")
+                self.canvas.itemconfig(self.power_switch["handle"], image = self.switch_down)
 
                 # Set the socket to non-blocking mode
                 self.socket.setblocking(False)
@@ -248,6 +268,8 @@ class Panel:
             self.connect_var.set("Connect")
             self.socket.close()
             self.socket = None
+            self.root.title("Altair 8800 Panel")
+            self.canvas.itemconfig(self.power_switch["handle"], image = self.switch_up)
 
     """
     Update the panel when something has changed on it. I message is sent

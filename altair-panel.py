@@ -1,7 +1,6 @@
 import version
 from tkinter import *
 from tkinter import messagebox
-from PIL import ImageTk, Image
 import socket
 
 import os
@@ -121,18 +120,18 @@ class Panel:
         self.root.resizable(False, False)
     
         # Load the panel bitmap, and display it
-        self.img = ImageTk.PhotoImage(Image.open(resource_path("altair-panel.png")))
+        self.img = PhotoImage(file=resource_path("altair-panel.png"))
         self.canvas.create_image(0, 0, anchor=NW, image=self.img)
 
         # Load the LED images
-        self.led_off = ImageTk.PhotoImage(Image.open(resource_path("led-off.png")))
-        self.led_on = ImageTk.PhotoImage(Image.open(resource_path("led-on.png")))
-        self.led_on_dim = ImageTk.PhotoImage(Image.open(resource_path("led-on-dim.png")))
+        self.led_off = PhotoImage(file=resource_path("led-off.png"))
+        self.led_on = PhotoImage(file=resource_path("led-on.png"))
+        self.led_on_dim = PhotoImage(file=resource_path("led-on-dim.png"))
 
         # Load the switch images
-        self.switch_down = ImageTk.PhotoImage(Image.open(resource_path("switch-down.png")))
-        self.switch_middle = ImageTk.PhotoImage(Image.open(resource_path("switch-middle.png")))
-        self.switch_up = ImageTk.PhotoImage(Image.open(resource_path("switch-up.png")))
+        self.switch_down = PhotoImage(file=resource_path("switch-down.png"))
+        self.switch_middle = PhotoImage(file=resource_path("switch-middle.png"))
+        self.switch_up = PhotoImage(file=resource_path("switch-up.png"))
 
         # Create the images on the canvas
         for i in self.status:  i["handle"] = self.canvas.create_image(i["pos"], image=self.led_off)

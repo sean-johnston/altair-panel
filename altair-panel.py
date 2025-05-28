@@ -1,11 +1,21 @@
 import version
 from tkinter import *
 from tkinter import messagebox
+from tkinter import font as tkFont
 import socket
 
 import os
 import sys
 
+"""
+Get the resource path to a resource
+
+This is used for when you use pyInstaller to create
+a standalone executable. If it is not a standalone
+executable, the path is the current working directory.
+
+relative_path: Resource within the project
+"""
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -22,6 +32,8 @@ class Panel:
     Initialize the class
     """
     def __init__(self):
+
+        self.multiplier = 1
 
         v = version.version
 
@@ -111,54 +123,129 @@ class Panel:
         # Initialize the GUI
         self.root = Tk()
         self.root.title("Altair 8800 Panel")
-    
-        # Add the canvas
-        self.canvas = Canvas(self.root,  width=1000, height=400)
-        self.canvas.pack()
-        
-        #Set the resizable property False
-        self.root.resizable(False, False)
-    
-        # Load the panel bitmap, and display it
-        self.img = PhotoImage(file=resource_path("altair-panel.png"))
-        self.canvas.create_image(0, 0, anchor=NW, image=self.img)
 
-        # Load the LED images
-        self.led_off = PhotoImage(file=resource_path("led-off.png"))
-        self.led_on = PhotoImage(file=resource_path("led-on.png"))
-        self.led_on_dim = PhotoImage(file=resource_path("led-on-dim.png"))
-
-        # Load the switch images
-        self.switch_down = PhotoImage(file=resource_path("switch-down.png"))
-        self.switch_middle = PhotoImage(file=resource_path("switch-middle.png"))
-        self.switch_up = PhotoImage(file=resource_path("switch-up.png"))
-
-        # Create the images on the canvas
-        for i in self.status:  i["handle"] = self.canvas.create_image(i["pos"], image=self.led_off)
-        for i in self.dbus:    i["handle"] = self.canvas.create_image(i["pos"], image=self.led_off)
-        for i in self.abus:    i["handle"] = self.canvas.create_image(i["pos"], image=self.led_off)
-        for i in self.dswitch: i["handle"] = self.canvas.create_image(i["pos"], image=self.switch_down)
-        for i in self.cswitch: i["handle"] = self.canvas.create_image(i["pos"], image=self.switch_middle)
-
-        self.power_switch["handle"] = self.canvas.create_image(self.power_switch["pos"], image=self.switch_up)
-
-        # Bind the mouse to the canvas to allow clicking for the switches
-        self.canvas.bind("<ButtonPress-1>", self.OnMouseDown)
-        self.canvas.bind("<ButtonRelease-1>", self.OnMouseUp)
-
-        # Initialize the string for the connect/disconnect button
-        self.connect_var = StringVar()
-        self.connect_var.set("Connect")
-
-        # Add the connect/disconnect button
-        self.connect=Button(self.root, textvariable=self.connect_var,command=self.connect_disconnect)
-        self.connect.pack()
+        self.build_controls(self.multiplier)
 
         # Set the switch pressed to None
         self.switch_pressed = None
 
         # Set the socket to None
         self.socket = None
+
+        # String for the connect button
+        self.connect_var = StringVar()
+
+
+    """
+    Build the controls in the window, based on the 
+    multiplier specified.
+
+    multiplier: Multiplier to zoom the window elements
+    """
+    def build_controls(self, multiplier):
+
+        # Add the canvas
+        self.canvas = Canvas(self.root, width=1000 * multiplier, height=400 * multiplier)
+        self.canvas.pack()
+        
+        #Set the resizable property False
+        self.root.resizable(False, False)
+    
+        # Load the panel bitmap, and display it
+        self.img = PhotoImage(file=resource_path("altair-panel.png")).zoom(multiplier, multiplier)
+        self.canvas.create_image(0, 0, anchor=NW, image=self.img)
+
+        # Load the LED images
+        self.led_off = PhotoImage(file=resource_path("led-off.png")).zoom(multiplier, multiplier)
+        self.led_on = PhotoImage(file=resource_path("led-on.png")).zoom(multiplier, multiplier)
+        self.led_on_dim = PhotoImage(file=resource_path("led-on-dim.png")).zoom(multiplier, multiplier)
+
+        # Load the switch images
+        self.switch_down = PhotoImage(file=resource_path("switch-down.png")).zoom(multiplier, multiplier)
+        self.switch_middle = PhotoImage(file=resource_path("switch-middle.png")).zoom(multiplier, multiplier)
+        self.switch_up = PhotoImage(file=resource_path("switch-up.png")).zoom(multiplier, multiplier)
+
+        # Create the images on the canvas
+        for i in self.status:
+            i["handle"] = self.canvas.create_image(
+                tuple([multiplier*x for x in i["pos"]]), image=self.led_off
+            )
+        for i in self.dbus:
+            i["handle"] = self.canvas.create_image(
+                tuple([multiplier*x for x in i["pos"]]), image=self.led_off
+            )
+        for i in self.abus:
+            i["handle"] = self.canvas.create_image(
+                tuple([multiplier*x for x in i["pos"]]), image=self.led_off
+            )
+        for i in self.dswitch:
+            i["handle"] = self.canvas.create_image(
+                tuple([multiplier*x for x in i["pos"]]), image=self.switch_down
+            )
+        for i in self.cswitch:
+            i["handle"] = self.canvas.create_image(
+                tuple([multiplier*x for x in i["pos"]]), image=self.switch_middle
+            )
+
+        self.power_switch["handle"] = self.canvas.create_image(
+            tuple([multiplier*x for x in self.power_switch["pos"]]), image=self.switch_up
+        )
+
+        # Bind the mouse to the canvas to allow clicking for the switches
+        self.canvas.bind("<ButtonPress-1>", self.OnMouseDown)
+        self.canvas.bind("<ButtonRelease-1>", self.OnMouseUp)
+
+        # Initialize the string for the connect/disconnect button
+        self.connect_var.set("Connect")
+
+        # Create a font for the buttons
+        self.font = tkFont.Font(family='Helvetica', size=12 * multiplier)
+
+        # Add the connect/disconnect button
+        self.connect=Button(self.root,textvariable=self.connect_var,command=self.connect_disconnect)
+        self.connect["font"] = self.font
+        self.connect.pack(side=LEFT, fill=X, expand=True)
+
+        # Add 1x button
+        self.x1=Button(self.root, text="1x", command=self.zoom_1)
+        self.x1["font"] = self.font
+        self.x1.pack(side=LEFT, fill=X, expand=True)
+
+        # Add 2x button
+        self.x2=Button(self.root, text="2x", command=self.zoom_2)
+        self.x2["font"] = self.font
+        self.x2.pack(side=LEFT, fill=X, expand=True)
+
+        # Set the switch pressed to None
+        self.switch_pressed = None
+
+        # Set the socket to None
+        self.socket = None
+
+
+    """
+    Clear the elements on the window
+    """
+    def clear(self):
+        for l in self.root.pack_slaves(): l.destroy()
+
+    """
+    Zoom the window to 1 times
+    """
+    def zoom_1(self):
+        self.clear()
+        self.multiplier = 1
+        self.build_controls(self.multiplier)
+        pass
+
+    """
+    Zoom the window to 2 times
+    """
+    def zoom_2(self):
+        self.clear()
+        self.multiplier = 2
+        self.build_controls(self.multiplier)
+        pass
 
     """
     Set a key value to on the socket
@@ -178,10 +265,10 @@ class Panel:
         # Get the mouse x and y position
         x, y = event.x, event.y
 
-        xs = self.power_switch["pos"][0]
-        ys = self.power_switch["pos"][1]
+        xs = self.power_switch["pos"][0] * self.multiplier
+        ys = self.power_switch["pos"][1] * self.multiplier
         # If we pressed a switch toggle switch
-        if x >= xs - 10 and x <= xs + 10 and y >= ys - 10 and y <= ys + 30:
+        if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y >= ys - 10 * self.multiplier and y <= ys + 30 * self.multiplier:
             self.connect_disconnect()
             return
 
@@ -191,10 +278,10 @@ class Panel:
         for i in self.cswitch:
 
             # Get the switch x and y position
-            xs = i["pos"][0]
-            ys = i["pos"][1]
+            xs = i["pos"][0] * self.multiplier
+            ys = i["pos"][1] * self.multiplier
             # Switch up
-            if x >= xs - 10 and x <= xs + 10 and y > ys - 30 and y <= ys:
+            if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y > ys - 30 * self.multiplier and y <= ys:
                 # Save the switch element
                 self.switch_pressed = i
                 # Set the switch up
@@ -203,7 +290,7 @@ class Panel:
                 self.send_switch(i["values"][2])
                 return
             # Switch down
-            if x >= xs - 10 and x <= xs + 10 and y > ys and y <= ys + 30:
+            if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y > ys and y <= ys + 30 * self.multiplier:
                 # Save the switch element
                 self.switch_pressed = i
                 # Set the switch down
@@ -214,10 +301,10 @@ class Panel:
 
         # Check for toggle switch
         for i in self.dswitch:
-            xs = i["pos"][0]
-            ys = i["pos"][1]
+            xs = i["pos"][0] * self.multiplier
+            ys = i["pos"][1] * self.multiplier
             # If we pressed a switch toggle switch
-            if x >= xs - 10 and x <= xs + 10 and y >= ys - 10 and y <= ys + 30:
+            if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y >= ys - 10 * self.multiplier and y <= ys + 30 * self.multiplier:
                 # Send the key value for that switch
                 self.send_switch(i["key"])
                 return

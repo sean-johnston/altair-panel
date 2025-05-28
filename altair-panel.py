@@ -124,6 +124,10 @@ class Panel:
         self.root = Tk()
         self.root.title("Altair 8800 Panel")
 
+        # String for the connect button
+        self.connect_var = StringVar()
+
+        # Build the controls
         self.build_controls(self.multiplier)
 
         # Set the switch pressed to None
@@ -131,10 +135,6 @@ class Panel:
 
         # Set the socket to None
         self.socket = None
-
-        # String for the connect button
-        self.connect_var = StringVar()
-
 
     """
     Build the controls in the window, based on the 

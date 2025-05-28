@@ -16,7 +16,9 @@ with the Altair Panel application.
 The application requires the following dependences:
 
 * Python 3: Python 3 needs to be installed, to run the application. I have developed it 
-using version 3.12.3. Older versions may work, but are not guaranteed.
+using version 3.12.3. Older versions may work, but are not guaranteed. 
+
+* **Note:** I have found that version 3.9 or older will not work with this code.
 
 * Tkinter: The application is written using the Tkinter graphical user interface. It
 is not using any special functionally, and should work on multiple platforms.
@@ -39,10 +41,11 @@ the Altair 8800. Once this is started, you can connect to the simulator.
 
 ### Connect To Simulator
 Press the "Connect" button, on the Altair Panel. This this button should changes to
-"Disconnect". If a connection is not successful, a message box will be displayed,
-saying that it was not successful.  If this happens, the Altair Panel can not 
-connect to the simulator. Confirm that the simulator is running and you are using
-the modified version.
+"Disconnect", and the power switch will change to "On". You can toggle the power
+swtich to do the same thing. If a connection is not successful, a message box will 
+be displayed, saying that it was not successful.  If this happens, the Altair Panel 
+can not connect to the simulator. Confirm that the simulator is running and you are 
+using the modified version.
 
 ### Panel Switches
 
@@ -58,6 +61,13 @@ terminal mode, and display output in the simulator's terminal.
 Commanding a STOP, will terminate the running application, and return back to the 
 the panel. The simulator will send the panel state.
 
+## Resizing The Window
+
+Since some computer screens can be set to a resolution that makes the application
+to small to read. There is an option to make the window 2 times the size. By
+pressing the button at the bottom of the window, you can zoom between 1 times
+and 2 times.
+
 ## Disconnecting From Simulator
 
 To disconnect from the simulator, press the "Disconnnect" button. It will change
@@ -72,5 +82,18 @@ A ready made binary executable is available at the following location, for
 different platfroms:
 
 https://github.com/sean-johnston/altair-panel/releases
+
+On Linux and MacOS, you need to make the file executable. You can do that 
+with the following command:
+
+    chmod 755 altair-panel-linux (For Linux)
+
+    chmod 755 altair-panel-mac (For MacOS)
+
+## Building A Standalone Executable
+
+To build a standalone executable for the application, you will need to install
+pyInstaller. You can run the install.sh script to build the executable. The
+executable will be in the **dist/** directory, in you project.
 
 

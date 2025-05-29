@@ -64,9 +64,14 @@ the panel. The simulator will send the panel state.
 ## Resizing The Window
 
 Since some computer screens can be set to a resolution that makes the application
-to small to read. There is an option to make the window 2 times the size. By
-pressing the button at the bottom of the window, you can zoom between 1 times
-and 2 times.
+to small to read. There is an option to make the window bigger. By
+selecting from the dropdown, you can zoom between different scales.
+
+## Changing The Behavior Of Backspace Key
+
+By default the backspace is set the (BS ascii 8). By clicking on the control, 
+you can toggle between BS (ascii 8) and DEL (ascii 127). This is the same as
+sending a tilda (~) on the terminal.
 
 ## Disconnecting From Simulator
 
@@ -89,6 +94,8 @@ with the following command:
     chmod 755 altair-panel-linux (For Linux)
 
     chmod 755 altair-panel-mac (For MacOS)
+
+    chmod 755 altiar-panel-freebsd (For FreeBSD)
 
 ## Building A Standalone Executable
 

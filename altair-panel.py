@@ -161,7 +161,7 @@ class Panel:
         # Add the connect/disconnect button
         self.connect=Button(self.control_frame,textvariable=self.connect_var,command=self.connect_disconnect)
         self.connect["font"] = self.font
-        self.connect.pack(side=LEFT,padx=10)
+        self.connect.pack(side=LEFT,padx=5)
 
         # Create a scale combo box
         self.combo = ttk.Combobox(self.control_frame,
@@ -171,7 +171,7 @@ class Panel:
             width=4
         )
         self.combo["font"] = self.font
-        self.combo.pack(side=LEFT)
+        self.combo.pack(side=LEFT, padx=5)
         self.root.option_add("*TCombobox*Listbox*Font", self.font)
 
         # Add event handler for combo box
@@ -188,7 +188,7 @@ class Panel:
         self.delete_var.set("")
 
         # Pack the label into the window
-        self.label.pack(padx=20, pady=5)  # Add some padding to the top
+        self.label.pack(padx=5, pady=5)  # Add some padding to the top
 
         # Pack the controls
         self.control_frame.pack(padx=10, pady=10)
@@ -378,7 +378,7 @@ class Panel:
             # Attempt to connect to a server
             try:
                 self.socket.setblocking(True)
-                self.socket.connect(('127.0.0.1', 8080))
+                self.socket.connect(('127.0.0.1', 8801))
                 self.connect_var.set("Disconnect")
                 self.root.title("Altair 8800 Panel - Connected")
                 self.canvas.itemconfig(self.power_switch["handle"], image = self.switch_down)

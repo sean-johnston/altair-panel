@@ -2,6 +2,7 @@ import version
 from tkinter import *
 from tkinter import messagebox
 from tkinter import font as tkFont
+from tkinter import ttk
 import socket
 
 import os
@@ -118,7 +119,7 @@ class Panel:
         ]
 
         # Power Switch
-        self.power_switch = {"name": "Power Switch"  ,"handle": None, "pos": (60, 291)}
+        self.power_switch = {"name": "Power Switch"  ,"handle": None, "pos": (57, 291)}
 
         # Initialize the GUI
         self.root = Tk()
@@ -126,6 +127,14 @@ class Panel:
 
         # String for the connect button
         self.connect_var = StringVar()
+
+        # Setup values for scale combo box, and
+        # set the inital value
+        self.combo_box_values = ["1x", "2x", "3x"]
+        self.zoom_var = StringVar()
+        self.zoom_var.set(self.combo_box_values[0])
+
+        self.delete_var = StringVar()
 
         # Build the controls
         self.build_controls(self.multiplier)
@@ -143,6 +152,46 @@ class Panel:
     multiplier: Multiplier to zoom the window elements
     """
     def build_controls(self, multiplier):
+        # Create a font for the controls
+        self.font = tkFont.Font(family='Helvetica', size=16 * multiplier)
+
+        # Create a frame for the controls
+        self.control_frame = Frame(self.root)
+
+        # Add the connect/disconnect button
+        self.connect=Button(self.control_frame,textvariable=self.connect_var,command=self.connect_disconnect)
+        self.connect["font"] = self.font
+        self.connect.pack(side=LEFT,padx=10)
+
+        # Create a scale combo box
+        self.combo = ttk.Combobox(self.control_frame,
+            state="readonly",
+            values=self.combo_box_values,
+            textvariable=self.zoom_var,
+            width=4
+        )
+        self.combo["font"] = self.font
+        self.combo.pack(side=LEFT)
+        self.root.option_add("*TCombobox*Listbox*Font", self.font)
+
+        # Add event handler for combo box
+        self.combo.bind("<<ComboboxSelected>>", self.combo_select)
+
+        self.label = Label(self.control_frame,
+                 textvariable=self.delete_var,
+                 font=self.font,
+                 relief=SUNKEN,
+                 width=4,
+                 justify=CENTER
+                )
+
+        self.delete_var.set("")
+
+        # Pack the label into the window
+        self.label.pack(padx=20, pady=5)  # Add some padding to the top
+
+        # Pack the controls
+        self.control_frame.pack(padx=10, pady=10)
 
         # Add the canvas
         self.canvas = Canvas(self.root, width=1000 * multiplier, height=400 * multiplier)
@@ -198,30 +247,21 @@ class Panel:
         # Initialize the string for the connect/disconnect button
         self.connect_var.set("Connect")
 
-        # Create a font for the buttons
-        self.font = tkFont.Font(family='Helvetica', size=12 * multiplier)
-
-        # Add the connect/disconnect button
-        self.connect=Button(self.root,textvariable=self.connect_var,command=self.connect_disconnect)
-        self.connect["font"] = self.font
-        self.connect.pack(side=LEFT, fill=X, expand=True)
-
-        # Add 1x button
-        self.x1=Button(self.root, text="1x", command=self.zoom_1)
-        self.x1["font"] = self.font
-        self.x1.pack(side=LEFT, fill=X, expand=True)
-
-        # Add 2x button
-        self.x2=Button(self.root, text="2x", command=self.zoom_2)
-        self.x2["font"] = self.font
-        self.x2.pack(side=LEFT, fill=X, expand=True)
-
         # Set the switch pressed to None
         self.switch_pressed = None
 
         # Set the socket to None
         self.socket = None
 
+        self.label.bind("<ButtonPress-1>", self.OnLabelClicked)
+
+    """
+    Handle combo box select event
+
+    event: combo box event
+    """
+    def combo_select(self, event):
+        self.zoom(int(self.zoom_var.get().replace("x","")))
 
     """
     Clear the elements on the window
@@ -230,20 +270,11 @@ class Panel:
         for l in self.root.pack_slaves(): l.destroy()
 
     """
-    Zoom the window to 1 times
+    Zoom the window
     """
-    def zoom_1(self):
+    def zoom(self, size):
         self.clear()
-        self.multiplier = 1
-        self.build_controls(self.multiplier)
-        pass
-
-    """
-    Zoom the window to 2 times
-    """
-    def zoom_2(self):
-        self.clear()
-        self.multiplier = 2
+        self.multiplier = size
         self.build_controls(self.multiplier)
         pass
 
@@ -255,6 +286,17 @@ class Panel:
     def send_switch(self, key):
         # Send the key over the socket to the server
         self.socket.send(key.encode())
+
+
+    """
+    Handle the mouse click event for the delete state
+    label
+
+    event: Object with the mouse event
+    """
+    def OnLabelClicked(self, event):
+        if self.socket is not None:
+            self.send_switch('~')
 
     """
     Handle the mouse down event for the canvas
@@ -392,6 +434,12 @@ class Panel:
                             self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_up)
                         else:
                             self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_down)
+
+                    flags = int(elements[1])
+                    if flags & 1:
+                        self.delete_var.set("DEL")
+                    else:
+                        self.delete_var.set("BS")
 
                     # Status
                     status = int(elements[2])

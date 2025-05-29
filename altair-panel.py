@@ -419,6 +419,13 @@ class Panel:
             except BlockingIOError:
                 # No data available, handle it later
                 pass
+            except ConnectionResetError:
+                # If the server dropped the connect, close it
+                # and display a message box
+                self.socket.close()
+                self.socket = None
+                messagebox.showerror("Error", "Connection has been closed.")
+                self.connect_var.set("Connect")
 
         # Call the function after 100 ms
         self.root.after(100, self.update)

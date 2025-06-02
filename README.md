@@ -23,6 +23,12 @@ using version 3.12.3. Older versions may work, but are not guaranteed.
 * Tkinter: The application is written using the Tkinter graphical user interface. It
 is not using any special functionally, and should work on multiple platforms.
 
+    pip3 install tk
+
+* pillow: We need this library to the scale the graphics for the panel.
+
+    pip3 install pillow
+
 ## Running
 
 Go to the directory that contains the application, and execute the following on the 
@@ -64,8 +70,8 @@ the panel. The simulator will send the panel state.
 ## Resizing The Window
 
 Since some computer screens can be set to a resolution that makes the application
-to small to read. There is an option to make the window bigger. By
-selecting from the dropdown, you can zoom between different scales.
+to small to read. There is an option to make the window bigger. By resizing the 
+window horizontally, the window will resize proportionally to a bigger or smaller size.
 
 ## Changing The Behavior Of Backspace Key
 

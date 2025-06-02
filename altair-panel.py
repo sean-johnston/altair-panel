@@ -3,6 +3,8 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter import font as tkFont
 from tkinter import ttk
+import math
+from PIL import Image, ImageTk
 import socket
 
 import os
@@ -118,19 +120,25 @@ class Panel:
             {"name": "STOP/RUN"             ,"handle": None, "pos": (233, 291),"values": ( 1, 0,"\033","r")}
         ]
 
+        self.elements = [0,0,0,0,0]
+
         # Power Switch
         self.power_switch = {"name": "Power Switch"  ,"handle": None, "pos": (57, 291)}
 
         # Initialize the GUI
         self.root = Tk()
         self.root.title("Altair 8800 Panel")
+        self.root.resizable(True, False)
+
+        # Set the socket to None
+        self.socket = None
 
         # String for the connect button
         self.connect_var = StringVar()
 
         # Setup values for scale combo box, and
         # set the inital value
-        self.combo_box_values = ["1x", "2x", "3x"]
+        self.combo_box_values = ["1x", "1.25x", "1.5x", "1.75x", "2x", "2.25x", "2.5x", "2.75x", "3x"]
         self.zoom_var = StringVar()
         self.zoom_var.set(self.combo_box_values[0])
 
@@ -142,8 +150,52 @@ class Panel:
         # Set the switch pressed to None
         self.switch_pressed = None
 
-        # Set the socket to None
-        self.socket = None
+        self.root.bind("<Configure>", self.resizing)
+        self.inital_window_width  = None
+        self.inital_window_height = None
+
+    """
+    Code that is run when the window is resized
+
+    event: Resize event
+    """
+    def resized(self, event):
+        # Only handle for main window
+        if event.widget == self.root:
+
+            # If the window was initially created
+            if self.inital_window_width == None: 
+
+                # Gather the initial window size, so we can scale the
+                # window proportionally
+                self.inital_window_width = event.width #- self.window_decoration_width
+                self.inital_window_height = event.height #- self.window_decoration_height
+            else:
+                # If the windows has already been created, zoom
+                # the window, and resize the horizontal to match
+                # proportions
+                self.zoom(event.width / self.inital_window_width)
+                y=int(((event.width) * (self.inital_window_height/(self.inital_window_width))) )
+                if event.height != y: 
+                    self.root.geometry('{x}x{y}'.format(x=event.width,y=y))
+
+    """
+    Code that runs when the window is being resized
+
+    event: Resize event
+    """
+    def resizing(self, event):
+        if event.widget == self.root:
+            if getattr(self, "_after_id", None):
+                self.root.after_cancel(self._after_id)
+            self._after_id = self.root.after(
+                100, lambda: self.resized(event)
+            )
+
+    def load_image(self, file, mult):
+        image = Image.open(file)
+        resized_image = image.resize((int(image.width * mult), int(image.height * mult)))
+        return ImageTk.PhotoImage(resized_image)
 
     """
     Build the controls in the window, based on the 
@@ -153,7 +205,7 @@ class Panel:
     """
     def build_controls(self, multiplier):
         # Create a font for the controls
-        self.font = tkFont.Font(family='Helvetica', size=16 * multiplier)
+        self.font = tkFont.Font(family='Helvetica', size=int(16 * multiplier))
 
         # Create a frame for the controls
         self.control_frame = Frame(self.root)
@@ -162,20 +214,6 @@ class Panel:
         self.connect=Button(self.control_frame,textvariable=self.connect_var,command=self.connect_disconnect)
         self.connect["font"] = self.font
         self.connect.pack(side=LEFT,padx=5)
-
-        # Create a scale combo box
-        self.combo = ttk.Combobox(self.control_frame,
-            state="readonly",
-            values=self.combo_box_values,
-            textvariable=self.zoom_var,
-            width=4
-        )
-        self.combo["font"] = self.font
-        self.combo.pack(side=LEFT, padx=5)
-        self.root.option_add("*TCombobox*Listbox*Font", self.font)
-
-        # Add event handler for combo box
-        self.combo.bind("<<ComboboxSelected>>", self.combo_select)
 
         self.label = Label(self.control_frame,
                  textvariable=self.delete_var,
@@ -197,22 +235,19 @@ class Panel:
         self.canvas = Canvas(self.root, width=1000 * multiplier, height=400 * multiplier)
         self.canvas.pack()
         
-        #Set the resizable property False
-        self.root.resizable(False, False)
-    
         # Load the panel bitmap, and display it
-        self.img = PhotoImage(file=resource_path("altair-panel.png")).zoom(multiplier, multiplier)
+        self.img = self.load_image(resource_path("altair-panel.png"), multiplier)
         self.canvas.create_image(0, 0, anchor=NW, image=self.img)
 
         # Load the LED images
-        self.led_off = PhotoImage(file=resource_path("led-off.png")).zoom(multiplier, multiplier)
-        self.led_on = PhotoImage(file=resource_path("led-on.png")).zoom(multiplier, multiplier)
-        self.led_on_dim = PhotoImage(file=resource_path("led-on-dim.png")).zoom(multiplier, multiplier)
+        self.led_off    = self.load_image(resource_path("led-off.png"),    multiplier)
+        self.led_on     = self.load_image(resource_path("led-on.png"),     multiplier)
+        self.led_on_dim = self.load_image(resource_path("led-on-dim.png"), multiplier)
 
         # Load the switch images
-        self.switch_down = PhotoImage(file=resource_path("switch-down.png")).zoom(multiplier, multiplier)
-        self.switch_middle = PhotoImage(file=resource_path("switch-middle.png")).zoom(multiplier, multiplier)
-        self.switch_up = PhotoImage(file=resource_path("switch-up.png")).zoom(multiplier, multiplier)
+        self.switch_down   = self.load_image(resource_path("switch-down.png")  , multiplier)
+        self.switch_middle = self.load_image(resource_path("switch-middle.png"), multiplier)
+        self.switch_up     = self.load_image(resource_path("switch-up.png")    , multiplier)
 
         # Create the images on the canvas
         for i in self.status:
@@ -245,23 +280,17 @@ class Panel:
         self.canvas.bind("<ButtonRelease-1>", self.OnMouseUp)
 
         # Initialize the string for the connect/disconnect button
-        self.connect_var.set("Connect")
+        if self.socket is None:
+            self.connect_var.set("Connect")
+        else:
+            self.connect_var.set("Disconnect")
 
         # Set the switch pressed to None
         self.switch_pressed = None
 
-        # Set the socket to None
-        self.socket = None
-
         self.label.bind("<ButtonPress-1>", self.OnLabelClicked)
 
-    """
-    Handle combo box select event
-
-    event: combo box event
-    """
-    def combo_select(self, event):
-        self.zoom(int(self.zoom_var.get().replace("x","")))
+        self.set_state()        
 
     """
     Clear the elements on the window
@@ -398,7 +427,52 @@ class Panel:
             self.socket.close()
             self.socket = None
             self.root.title("Altair 8800 Panel")
+            self.elements = [0,0,0,0,0]
+            self.set_state()
             self.canvas.itemconfig(self.power_switch["handle"], image = self.switch_up)
+
+    """
+    Set the state of the switches and LEDs, based on the elements data 
+    """
+    def set_state(self):
+        # Switches
+        dswitch = int(self.elements[0])
+        for i in range(0,16):
+            if (dswitch & (2 ** i)) != 0:
+                self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_up)
+            else:
+                self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_down)
+
+        flags = int(self.elements[1])
+        if flags & 1:
+            self.delete_var.set("DEL")
+        else:
+            self.delete_var.set("BS")
+
+        # Status
+        status = int(self.elements[2])
+        for i in range(0,12):
+            if (status & (2 ** i)) != 0:
+                self.canvas.itemconfig(self.status[i]["handle"], image = self.led_on_dim)
+            else:
+                self.canvas.itemconfig(self.status[i]["handle"], image = self.led_off)
+
+        # Address bus
+        abus = int(self.elements[3])
+        for i in range(0,16):
+            if (abus & (2 ** i)) != 0:
+                self.canvas.itemconfig(self.abus[i]["handle"], image = self.led_on_dim)
+            else:
+                self.canvas.itemconfig(self.abus[i]["handle"], image = self.led_off)
+
+        # Data bus
+        dbus = int(self.elements[4]) 
+        for i in range(0,8):
+            if (dbus & (2 ** i)) != 0:
+                self.canvas.itemconfig(self.dbus[i]["handle"], image = self.led_on_dim)
+            else:
+                self.canvas.itemconfig(self.dbus[i]["handle"], image = self.led_off)
+
 
     """
     Update the panel when something has changed on it. I message is sent
@@ -425,45 +499,9 @@ class Panel:
                     line = lines[len(lines)-1]
 
                     # Break up the line into elements
-                    elements = line.split(',')
+                    self.elements = line.split(',')
+                    self.set_state()
 
-                    # Switches
-                    dswitch = int(elements[0])
-                    for i in range(0,16):
-                        if (dswitch & (2 ** i)) != 0:
-                            self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_up)
-                        else:
-                            self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_down)
-
-                    flags = int(elements[1])
-                    if flags & 1:
-                        self.delete_var.set("DEL")
-                    else:
-                        self.delete_var.set("BS")
-
-                    # Status
-                    status = int(elements[2])
-                    for i in range(0,12):
-                        if (status & (2 ** i)) != 0:
-                            self.canvas.itemconfig(self.status[i]["handle"], image = self.led_on_dim)
-                        else:
-                            self.canvas.itemconfig(self.status[i]["handle"], image = self.led_off)
-
-                    # Address bus
-                    abus = int(elements[3])
-                    for i in range(0,16):
-                        if (abus & (2 ** i)) != 0:
-                            self.canvas.itemconfig(self.abus[i]["handle"], image = self.led_on_dim)
-                        else:
-                            self.canvas.itemconfig(self.abus[i]["handle"], image = self.led_off)
-
-                    # Data bus
-                    dbus = int(elements[4]) 
-                    for i in range(0,8):
-                        if (dbus & (2 ** i)) != 0:
-                            self.canvas.itemconfig(self.dbus[i]["handle"], image = self.led_on_dim)
-                        else:
-                            self.canvas.itemconfig(self.dbus[i]["handle"], image = self.led_off)
             except BlockingIOError:
                 # No data available, handle it later
                 pass

@@ -40,7 +40,6 @@ class Panel:
         self.settings={
             "scale": 1.0
         }
-        #self.multiplier = 1
 
         v = version.version
 
@@ -193,8 +192,9 @@ class Panel:
 
     def set_window_size(self):
         self.read_config()
-        self.clear()
-        self.build_controls(self.settings['scale'])
+        if self.settings['scale'] != 1.0:
+            self.clear()
+            self.build_controls(self.settings['scale'])
 
     """
     Code that is run when the window is resized
@@ -216,6 +216,8 @@ class Panel:
                 # If the windows has already been created, zoom
                 # the window, and resize the horizontal to match
                 # proportions
+                if event.width / self.inital_window_width == 1.0: return
+
                 self.zoom(event.width / self.inital_window_width)
                 y=int(((event.width) * (self.inital_window_height/(self.inital_window_width))) )
                 if event.height != y: 
@@ -358,7 +360,7 @@ class Panel:
         self.clear()
         self.settings["scale"] = size
         self.write_config()
-        self.build_controls(size)
+        self.build_controls(self.settings["scale"])
         pass
 
     """

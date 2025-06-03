@@ -9,6 +9,7 @@ import socket
 
 import os
 import sys
+import json
 
 """
 Get the resource path to a resource
@@ -36,7 +37,10 @@ class Panel:
     """
     def __init__(self):
 
-        self.multiplier = 1
+        self.settings={
+            "scale": 1.0
+        }
+        #self.multiplier = 1
 
         v = version.version
 
@@ -120,6 +124,7 @@ class Panel:
             {"name": "STOP/RUN"             ,"handle": None, "pos": (233, 291),"values": ( 1, 0,"\033","r")}
         ]
 
+        # Set the state elements to 0
         self.elements = [0,0,0,0,0]
 
         # Power Switch
@@ -127,7 +132,11 @@ class Panel:
 
         # Initialize the GUI
         self.root = Tk()
-        self.root.title("Altair 8800 Panel")
+        self.title = "Altair 8800 Panel (" + version.version + ")"
+        self.root.title(self.title)
+        self.root.configure(background='black')
+
+        # Make only the horizontal resizable
         self.root.resizable(True, False)
 
         # Set the socket to None
@@ -136,23 +145,56 @@ class Panel:
         # String for the connect button
         self.connect_var = StringVar()
 
-        # Setup values for scale combo box, and
-        # set the inital value
-        self.combo_box_values = ["1x", "1.25x", "1.5x", "1.75x", "2x", "2.25x", "2.5x", "2.75x", "3x"]
-        self.zoom_var = StringVar()
-        self.zoom_var.set(self.combo_box_values[0])
-
+        # String for the delete label
         self.delete_var = StringVar()
 
+        # Load panel image
+        self.panel_orig = Image.open(resource_path("altair-panel.png"))
+
+        # Load the LED images
+        self.led_off_orig    = Image.open(resource_path("led-off.png"))
+        self.led_on_orig     = Image.open(resource_path("led-on.png"))
+        self.led_on_dim_orig = Image.open(resource_path("led-on-dim.png"))
+
+        # Load the switch images
+        self.switch_down_orig   = Image.open(resource_path("switch-down.png"))
+        self.switch_middle_orig = Image.open(resource_path("switch-middle.png"))
+        self.switch_up_orig     = Image.open(resource_path("switch-up.png"))
+
         # Build the controls
-        self.build_controls(self.multiplier)
+        self.build_controls(self.settings['scale'])
+
+        self.settings_file = "cfg.json"
+
+        self.root.after(100, self.set_window_size)
 
         # Set the switch pressed to None
         self.switch_pressed = None
 
+        # Bind the resizing window event
         self.root.bind("<Configure>", self.resizing)
+
+        # Set the initial window size
         self.inital_window_width  = None
         self.inital_window_height = None
+
+
+    def write_config(self):
+        with open(self.settings_file, "w") as outfile:
+            json_object = json.dumps(self.settings, indent=4)
+            outfile.write(json_object)
+
+    def read_config(self):
+        if not os.path.exists(self.settings_file):
+            self.write_config()
+
+        with open(self.settings_file, 'r') as openfile:
+            self.settings = json.load(openfile)
+
+    def set_window_size(self):
+        self.read_config()
+        self.clear()
+        self.build_controls(self.settings['scale'])
 
     """
     Code that is run when the window is resized
@@ -192,8 +234,14 @@ class Panel:
                 100, lambda: self.resized(event)
             )
 
-    def load_image(self, file, mult):
-        image = Image.open(file)
+    """
+    Resize the image based on the mulitplier
+
+    image: The unresized image
+    mult: The multiplier to resize the image to
+    """
+    def resize_image(self, image, mult):
+        #image = Image.open(file)
         resized_image = image.resize((int(image.width * mult), int(image.height * mult)))
         return ImageTk.PhotoImage(resized_image)
 
@@ -207,8 +255,10 @@ class Panel:
         # Create a font for the controls
         self.font = tkFont.Font(family='Helvetica', size=int(16 * multiplier))
 
+        self.control_area = Frame(self.root)
+
         # Create a frame for the controls
-        self.control_frame = Frame(self.root)
+        self.control_frame = Frame(self.control_area)
 
         # Add the connect/disconnect button
         self.connect=Button(self.control_frame,textvariable=self.connect_var,command=self.connect_disconnect)
@@ -230,24 +280,26 @@ class Panel:
 
         # Pack the controls
         self.control_frame.pack(padx=10, pady=10)
+        self.control_area.pack(fill="both", expand=True)
 
         # Add the canvas
         self.canvas = Canvas(self.root, width=1000 * multiplier, height=400 * multiplier)
+        self.canvas.configure(background='black')
         self.canvas.pack()
         
-        # Load the panel bitmap, and display it
-        self.img = self.load_image(resource_path("altair-panel.png"), multiplier)
-        self.canvas.create_image(0, 0, anchor=NW, image=self.img)
+        # Resize the panel bitmap, and display it
+        self.panel = self.resize_image(self.panel_orig, multiplier)
+        self.canvas.create_image(0, 0, anchor=NW, image=self.panel)
 
-        # Load the LED images
-        self.led_off    = self.load_image(resource_path("led-off.png"),    multiplier)
-        self.led_on     = self.load_image(resource_path("led-on.png"),     multiplier)
-        self.led_on_dim = self.load_image(resource_path("led-on-dim.png"), multiplier)
+        # Resize the LED images
+        self.led_off    = self.resize_image(self.led_off_orig,    multiplier)
+        self.led_on     = self.resize_image(self.led_on_orig,     multiplier)
+        self.led_on_dim = self.resize_image(self.led_on_dim_orig, multiplier)
 
-        # Load the switch images
-        self.switch_down   = self.load_image(resource_path("switch-down.png")  , multiplier)
-        self.switch_middle = self.load_image(resource_path("switch-middle.png"), multiplier)
-        self.switch_up     = self.load_image(resource_path("switch-up.png")    , multiplier)
+        # Resize the switch images
+        self.switch_down   = self.resize_image(self.switch_down_orig  , multiplier)
+        self.switch_middle = self.resize_image(self.switch_middle_orig, multiplier)
+        self.switch_up     = self.resize_image(self.switch_up_orig    , multiplier)
 
         # Create the images on the canvas
         for i in self.status:
@@ -298,13 +350,15 @@ class Panel:
     def clear(self):
         for l in self.root.pack_slaves(): l.destroy()
 
+
     """
     Zoom the window
     """
     def zoom(self, size):
         self.clear()
-        self.multiplier = size
-        self.build_controls(self.multiplier)
+        self.settings["scale"] = size
+        self.write_config()
+        self.build_controls(size)
         pass
 
     """
@@ -336,10 +390,14 @@ class Panel:
         # Get the mouse x and y position
         x, y = event.x, event.y
 
-        xs = self.power_switch["pos"][0] * self.multiplier
-        ys = self.power_switch["pos"][1] * self.multiplier
+        xs = self.power_switch["pos"][0] * self.settings["scale"]
+        ys = self.power_switch["pos"][1] * self.settings["scale"]
+
         # If we pressed a switch toggle switch
-        if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y >= ys - 10 * self.multiplier and y <= ys + 30 * self.multiplier:
+        if x >= xs - 10 * self.settings["scale"] and \
+                x <= xs + 10 * self.settings["scale"] and \
+                y >= ys - 10 * self.settings["scale"] and \
+                y <= ys + 30 * self.settings["scale"]:
             self.connect_disconnect()
             return
 
@@ -349,10 +407,13 @@ class Panel:
         for i in self.cswitch:
 
             # Get the switch x and y position
-            xs = i["pos"][0] * self.multiplier
-            ys = i["pos"][1] * self.multiplier
+            xs = i["pos"][0] * self.settings["scale"]
+            ys = i["pos"][1] * self.settings["scale"]
             # Switch up
-            if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y > ys - 30 * self.multiplier and y <= ys:
+            if x >= xs - 10 * self.settings["scale"] \
+                    and x <= xs + 10 * self.settings["scale"] \
+                    and y > ys - 30 * self.settings["scale"] \
+                    and y <= ys:
                 # Save the switch element
                 self.switch_pressed = i
                 # Set the switch up
@@ -361,7 +422,10 @@ class Panel:
                 self.send_switch(i["values"][2])
                 return
             # Switch down
-            if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y > ys and y <= ys + 30 * self.multiplier:
+            if x >= xs - 10 * self.settings["scale"] \
+                    and x <= xs + 10 * self.settings["scale"] \
+                    and y > ys \
+                    and y <= ys + 30 * self.settings["scale"]:
                 # Save the switch element
                 self.switch_pressed = i
                 # Set the switch down
@@ -372,10 +436,13 @@ class Panel:
 
         # Check for toggle switch
         for i in self.dswitch:
-            xs = i["pos"][0] * self.multiplier
-            ys = i["pos"][1] * self.multiplier
+            xs = i["pos"][0] * self.settings["scale"]
+            ys = i["pos"][1] * self.settings["scale"]
             # If we pressed a switch toggle switch
-            if x >= xs - 10 * self.multiplier and x <= xs + 10 * self.multiplier and y >= ys - 10 * self.multiplier and y <= ys + 30 * self.multiplier:
+            if x >= xs - 10 * self.settings["scale"] \
+                    and x <= xs + 10 * self.settings["scale"] \
+                    and y >= ys - 10 * self.settings["scale"] \
+                    and y <= ys + 30 * self.settings["scale"]:
                 # Send the key value for that switch
                 self.send_switch(i["key"])
                 return
@@ -406,10 +473,19 @@ class Panel:
 
             # Attempt to connect to a server
             try:
+                # Make the connection blocking, for connect
                 self.socket.setblocking(True)
+
+                # Connect to server
                 self.socket.connect(('127.0.0.1', 8801))
+
+                # SEt the connect button text
                 self.connect_var.set("Disconnect")
-                self.root.title("Altair 8800 Panel - Connected")
+
+                # Update the title
+                self.root.title(self.title + " - Connected")
+
+                # You on the power switch
                 self.canvas.itemconfig(self.power_switch["handle"], image = self.switch_down)
 
                 # Set the socket to non-blocking mode
@@ -423,12 +499,22 @@ class Panel:
 
         else:
             # Disconnect from the socket
+
+            # Set connect button text
             self.connect_var.set("Connect")
+
+            # Close the socket
             self.socket.close()
             self.socket = None
-            self.root.title("Altair 8800 Panel")
+
+            # Update the window title
+            self.root.title(self.title)
+
+            # Reset the state
             self.elements = [0,0,0,0,0]
             self.set_state()
+
+            # Turn off the power switch
             self.canvas.itemconfig(self.power_switch["handle"], image = self.switch_up)
 
     """
@@ -444,10 +530,15 @@ class Panel:
                 self.canvas.itemconfig(self.dswitch[i]["handle"], image = self.switch_down)
 
         flags = int(self.elements[1])
-        if flags & 1:
-            self.delete_var.set("DEL")
+        if self.socket is None:
+            # Set unconnected value
+            self.delete_var.set("")
         else:
-            self.delete_var.set("BS")
+            # Set the value based on actual panel
+            if flags & 1:
+                self.delete_var.set("DEL")
+            else:
+                self.delete_var.set("BS")
 
         # Status
         status = int(self.elements[2])
